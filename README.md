@@ -1,12 +1,29 @@
-# dota2bots
-Library of Dota 2 Bot scripts
+# Slark Bot
+This is Slark bot, he likes to be Slark.
 
 ## Intention
-This repo exists to give people a shared codebase for their custom bot scripts. Fork this repo to develop some scripts yourself or push your new scripts or changes to existing scripts against it to share your work.
-Together we can create a shared Bot AI for all the heroes out there in Dota. Have fun! :)
+Just creating a slark to do things and be cool.
 
-## Form
-For utility functions, please keep one function per file and name the file after the function so we can keep the directories clean, understandable and usable for everyone.
+## Current issues
+- Slark is not levelling his abilities yet.
+- This error:
+
+Script Runtime Error: ...\dota\scripts\vscripts\bots/ability_item_usage_slark.lua:200: attempt to index global 'npcBot' (a nil value)
+stack traceback:
+	...\dota\scripts\vscripts\bots/ability_item_usage_slark.lua:200: in main chunk
+	[C]: in function 'require'
+	...ota 2 beta\game\dota\scripts\vscripts\bots\bot_slark.lua:9: in main chunk
+Failed to run script 'C:\Program Files (x86)\Steam\steamapps\common\dota 2 beta\game\dota\scripts\vscripts\bots\bot_slark.lua'!
+Script Runtime Error: ...\dota\scripts\vscripts\bots\ability_item_usage_slark.lua:200: attempt to index global 'npcBot' (a nil value)
+stack traceback:
+	...\dota\scripts\vscripts\bots\ability_item_usage_slark.lua:200: in main chunk
+Failed to run script 'C:\Program Files (x86)\Steam\steamapps\common\dota 2 beta\game\dota\scr
+
+## Work in progress
+
+- To see if he does dark pact and pounce combo if not, making it work.
+- Get Slark to start using shadow blade and search for ganks
+- To see if he does purge off Track/X Mark/Dust
 
 ## Useful links
 * https://developer.valvesoftware.com/wiki/Dota_Bot_Scripting - Valves Wiki for the Dota 2 Bot API
