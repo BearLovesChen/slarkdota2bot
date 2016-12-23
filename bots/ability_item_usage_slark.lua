@@ -23,19 +23,19 @@ function AbilityUsageThink()
 
 	if ( castPounceDesire > 0 ) 
 	then
-		npcBot:Action_UseAbilityOnLocation( abilityPounce, castPounceTarget );
+		npcBot:Action_UseAbilityOnEntity( abilityPounce, castPounceTarget );
 		return;
 	end
 
 	if ( castDarkDesire > 0 ) 
 	then
-		npcBot:Action_UseAbilityOnEntity( abilityDark, castDarkLocation );
+		npcBot:Action_UseAbility( abilityDark, castDark );
 		return;
 	end
 
 	if ( castDanceDesire > 0.5 ) 
 	then
-		npcBot:Action_UseAbilityOnLocation( abilityDance, castDanceLocation );
+		npcBot:Action_UseAbility( abilityDance, castDance );
 		return;
 	end
 

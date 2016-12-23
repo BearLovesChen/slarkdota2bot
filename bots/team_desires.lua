@@ -4,7 +4,7 @@
 
 function UpdatePushLaneDesires()
 
-	return { 0.0, 0.5, 1.0 };
+	return { 0.0, 0.7, 1.0 };
 
 end
 
@@ -12,7 +12,7 @@ end
 
 function UpdateDefendLaneDesires()
 
-	return { 0.1, 0.2, 0.3 };
+	return { 0.1, 0.1, 0.1 };
 
 end
 
@@ -36,7 +36,7 @@ end
 
 function UpdateRoshanDesire()
 
-	return 0.8;
+	return 0.4;
 
 end
 

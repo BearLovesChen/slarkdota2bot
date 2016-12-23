@@ -5,6 +5,7 @@ local tableItemsToBuy = {
 				"item_tango",
 				"item_flask",
 				"item_stout_shield",
+				"item_quelling_blade",
 				"item_slippers",
 				"item_slippers",
 				"item_boots",

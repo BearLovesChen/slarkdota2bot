@@ -2,6 +2,7 @@
     StateMachine is a table
     the key "STATE" stores the STATE of Slark 
     other key value pairs: key is the string of state value is the function of the State. 
+
     each frame DOTA2 will call Think()
     Then Think() will call the function of current state.
 ]]
@@ -20,7 +21,7 @@ local STATE_FIGHTING = "STATE_FIGHTING";
 local STATE_RUN_AWAY = "STATE_RUN_AWAY";
 
 local SlarkRetreatHPThreshold = 0.3;
-local SlarkRetreatMPThreshold = 0.1;
+local SlarkRetreatMPThreshold = 0.2;
 
 local STATE = STATE_IDLE;
 
@@ -59,7 +60,7 @@ local function ConsiderFighting(StateMachine)
         for _,npcEnemy in pairs( NearbyEnemyHeroes )
         do
             if(npcBot:WasRecentlyDamagedByHero(npcEnemy,1)) then
-                -- got the enemy who attacks me, kill him!--
+                -- Enemy is hitting, kill the fucker!
                 StateMachine["EnemyToKill"] = npcEnemy;
                 ShouldFight = true;
                 break;
@@ -91,19 +92,13 @@ local function ConsiderAttackCreeps()
 
     -- Consider using each ability
     
-	local castPounceDesire, castPounceTarget = ConsiderPounce(abilityPounce);
+	local castDanceDesire, castDanceTarget = ConsiderShadowDance(abilityDance);
+	local castPounceDesire, castPounce = ConsiderPounce(abilityPounce);
 	local castDarkDesire, castDark = ConsiderDarkPact(abilityDark);
-	local castDanceDesire, castDance = ConsiderShadowDance(abilityDance);
 
-    if ( castDarkDesire > castPounceDesire and castDarkDesire > castDanceDesire ) 
+    if ( castPounceDesire > castDanceDesire and castPounceDesire > castDarkDesire ) 
 	then
-		npcBot:Action_UseAbilityOnEntity( abilityDark, castDark );
-		return;
-	end
-
-	if ( castPounceDesire > 0 ) 
-	then
-		npcBot:Action_UseAbilityOnTarget( abilityPounce, castPounceTarget );
+		npcBot:Action_UseAbilityOnEntity( abilityDance, castDanceTarget );
 		return;
 	end
 
@@ -113,7 +108,13 @@ local function ConsiderAttackCreeps()
 		return;
 	end
 
-    --print("desires: " .. castPounceDesire .. " " .. castDarkDesire .. " " .. castDanceDesire);
+	if ( castDarkDesire > 0 ) 
+	then
+		npcBot:Action_UseAbility( abilityDark, castDark );
+		return;
+	end
+
+    --print("desires: " .. castDanceDesire .. " " .. castPounceDesire .. " " .. castDarkDesire);
 
     --If we dont cast ability, just try to last hit.
 
@@ -121,7 +122,7 @@ local function ConsiderAttackCreeps()
     local weakest_creep = nil;
     for creep_k,creep in pairs(EnemyCreeps)
     do 
-        --npcBot:GetEstimatedDamageToTarget
+        --npcBot:GetBaseDamage
         local creep_name = creep:GetUnitName();
         --print(creep_name);
         if(creep:IsAlive()) then
@@ -134,9 +135,9 @@ local function ConsiderAttackCreeps()
     end
 
     if(weakest_creep ~= nil) then
-        -- Trying to last hit
+        -- Last hitting and denying? PogChamp.
         if(DotaBotUtility.NilOrDead(npcBot:GetAttackTarget()) and 
-        lowest_hp < npcBot:GetBaseDamageVariance( true, weakest_creep, 1.0, DAMAGE_TYPE_PHYSICAL + 20 )) then
+        lowest_hp < npcBot:GetBaseDamage( true, weakest_creep, 1.0, DAMAGE_TYPE_PHYSICAL ) + 30) then
             npcBot:Action_AttackUnit(weakest_creep,true);
             return;
         end
@@ -146,7 +147,7 @@ local function ConsiderAttackCreeps()
 
     for creep_k,creep in pairs(AllyCreeps)
     do 
-        --npcBot:GetBaseDamageVariance
+        --npcBot:GetBaseDamage
         local creep_name = creep:GetUnitName();
         --print(creep_name);
         if(creep:IsAlive()) then
@@ -159,9 +160,9 @@ local function ConsiderAttackCreeps()
     end
 
     if(weakest_creep ~= nil) then
-        -- Last hitting
+        -- Last hitting and denying? PogChamp.
         if(DotaBotUtility.NilOrDead(npcBot:GetAttackTarget()) and 
-        lowest_hp < npcBot:GetBaseDamageVariance( true, weakest_creep, 1.0, DAMAGE_TYPE_PHYSICAL + 20 ) and 
+        lowest_hp < npcBot:GetBaseDamage( true, weakest_creep, 1.0, DAMAGE_TYPE_PHYSICAL ) + 30 and 
         weakest_creep:GetHealth() / weakest_creep:GetMaxHealth() < 0.5) then
             Attacking_creep = weakest_creep;
             npcBot:Action_AttackUnit(Attacking_creep,true);
@@ -171,7 +172,7 @@ local function ConsiderAttackCreeps()
         
     end
 
-    -- nothing to do , try to attack heroes
+    -- Bored, hit heroes. Get them essenece shift procs my little fishy
 
     local NearbyEnemyHeroes = npcBot:GetNearbyHeroes( 700, true, BOT_MODE_ATTACK );
     if(NearbyEnemyHeroes ~= nil) then
@@ -239,9 +240,9 @@ local function StateIdle(StateMachine)
         StateMachine.State = STATE_FIGHTING;
         return;
     elseif(#creeps > 0 and pt ~= nil) then
-        local mypos = npcBot:GetLocation();
+        local mypos = npcBot:Get();
         
-        local d = GetUnitToLocationDistance(npcBot,pt);
+        local d = GetUnitToDistance(npcBot,pt);
         if(d > 250) then
             StateMachine.State = STATE_GOTO_COMFORT_POINT;
         else
@@ -250,7 +251,7 @@ local function StateIdle(StateMachine)
         return;
     end
 
-    --target = GetLocationAlongLane(LANE,0.95);
+    --target = GetAlongLane(LANE,0.95);
     target = DotaBotUtility:GetNearBySuccessorPointOnLane(LANE);
     npcBot:Action_AttackMove(target);
     
@@ -276,8 +277,8 @@ local function StateAttackingCreep(StateMachine)
         StateMachine.State = STATE_FIGHTING;
         return;
     elseif(#creeps > 0 and pt ~= nil) then
-        local mypos = npcBot:GetLocation();
-        local d = GetUnitToLocationDistance(npcBot,pt);
+        local mypos = npcBot:Get();
+        local d = GetUnitToDistance(npcBot,pt);
         if(d > 250) then
             StateMachine.State = STATE_GOTO_COMFORT_POINT;
         else
@@ -285,7 +286,7 @@ local function StateAttackingCreep(StateMachine)
         end
         return;
     else
-        StateMachine.State = STATE_IDLE;
+        StateMachine.State = STATE_FARMING;
         return;
     end
 end
@@ -298,10 +299,10 @@ local function StateRetreat(StateMachine)
     end
 
     --[[
-            I don't know how to Create a object of Location so I borrow one from GetLocation()
-            Got Vector from marko.polo at http://dev.dota2.com/showthread.php?t=274301
+        Bear knowing how to create a location object. BrokeBack.
+        Borrowed the vector from marko.polo at http://dev.dota2.com/showthread.php?t=274301
     ]]
-    npcBot:Action_MoveToLocation(Constant.HomePosition());
+    npcBot:Action_MoveTo(Constant.HomePosition());
 
     if(npcBot:GetHealth() == npcBot:GetMaxHealth() and npcBot:GetMana() == npcBot:GetMaxMana()) then
         StateMachine.State = STATE_IDLE;
@@ -329,30 +330,99 @@ local function StateGotoComfortPoint(StateMachine)
         StateMachine.State = STATE_FIGHTING;
         return;
     elseif(#creeps > 0 and pt ~= nil) then
-        local mypos = npcBot:GetLocation();
-        --pt[3] = npcBot:GetLocation()[3];
+        local mypos = npcBot:Get();
+        --pt[3] = npcBot:Get()[3];
         
-        --local d = GetUnitToLocationDistance(npcBot,pt);
-        local d = (npcBot:GetLocation() - pt):Length2D();
+        --local d = GetUnitToDistance(npcBot,pt);
+        local d = (npcBot:Get() - pt):Length2D();
  
         if (d < 200) then
             StateMachine.State = STATE_ATTACKING_CREEP;
         else
-            npcBot:Action_MoveToLocation(pt);
+            npcBot:Action_MoveTo(pt);
         end
         return;
     else
-        StateMachine.State = STATE_IDLE;
+        StateMachine.State = STATE_FARMING;
         return;
     end
 
 end
 
+local function StateFighting(StateMachine)
+    local npcBot = GetBot();
+    if(npcBot:IsAlive() == false) then
+        StateMachine["dark pact time"] = nil;
+        StateMachine.State = STATE_FIGHTING;
+        return;
+    end
+
+    if(IsTowerAttackingMe()) then
+        StateMachine["dark pact time"] = nil;
+        StateMachine.State = STATE_RUN_AWAY;
+    elseif(not StateMachine["EnemyToKill"]:CanBeSeen() or not StateMachine["EnemyToKill"]:IsAlive()) then
+        -- lost enemy 
+        print("lost enemy");
+        StateMachine["dark pact time"] = nil;
+        StateMachine.State = STATE_IDLE;
+        return;
+    else
+        if ( npcBot:IsUsingAbility() ) then return end;
+
+        local DarkPact = DotaBotUtility.IsCooldownReady("slark_dark_pact");
+
+        if(DarkPact ~= nil) then
+            if(ConsiderDarkPact(DarkPact,StateMachine["EnemyToKill"])) then
+                npcBot:Action_UseAbility(DarkPact,StateMachine["EnemyToKill"]);
+                StateMachine["dark pact time"] = GameTime();
+                return;
+            elseif(DarkPact:IsFullyCastable()) then
+                -- Getting closer to Dark Pact then Pounce. Unf.
+                npcBot:Action_MoveTo(StateMachine["EnemyToKill"]:Get());
+                return;
+            end
+        end
+
+        local abilityPounce = npcBot:GetAbilityByName( "slark_pounce" );
+        local abilityDark = npcBot:GetAbilityByName( "Slark_dark_pact" );
+        local abilityDance = npcBot:GetAbilityByName( "slark_shadow_dance" );
+
+        local Slark_DarkPact_Pounce_Combo_Delay = 1.4;
+
+        if(StateMachine["dark pact time"] ~= nil) then
+            -- Consider Pounce after DarkPact
+            -- Cast Pounce 0.1s before DarkPact enDark
+            if(abilityPounce:IsFullyCastable() and GameTime() - StateMachine["dark pact time"] > Slark_DarkPact_Pounce_Combo_Delay) then
+                if(DotaBotUtility.AbilityOutOfRange4Unit(abilityPounce,StateMachine["EnemyToKill"])) then
+                    -- Let's get closer to Pounce. OOSH
+                    npcBot:Action_MoveTo(StateMachine["EnemyToKill"]:Get());
+                    return;
+                else
+                    npcBot:Action_UseAbility( abilityPounce, StateMachine["EnemyToKill"]:Get());
+                    StateMachine["dark pact time"] = nil;
+                    return;
+                end
+            elseif(abilityPounce:IsFullyCastable() and GameTime() - StateMachine["dark pact time"] < Slark_DarkPact_Pounce_Combo_Delay) then
+                if(DotaBotUtility.AbilityOutOfRange4Unit(abilityPounce,StateMachine["EnemyToKill"])) then
+                    -- Come on, get closer to you fuckwit.
+                    npcBot:Action_MoveTo(StateMachine["EnemyToKill"]:Get());
+                    return;
+                end
+            end
+        end
+        
+
         -- Consider using each ability
         
-        local castPounceDesire, castPounceTarget = ConsiderPounceFighting(abilityPounce,StateMachine["EnemyToKill"]);
-        local castDarkDesire, castDark = ConsiderDarkPact(abilityDark,StateMachine["EnemyToKill"]);
         local castDanceDesire, castDance = ConsiderShadowDance(abilityDance);
+        local castPounceDesire, castPounceTarget = ConsiderPounceFighting(abilityPounce,StateMachine["EnemyToKill"]);
+        local castDarkDesire, castDark = ConsiderDarkPactFighting(abilityDark,StateMachine["EnemyToKill"]);
+
+        if ( castDanceDesire > 0 ) 
+        then
+            npcBot:Action_UseAbility( abilityDance, castDance );
+            return;
+        end
 
         if ( castPounceDesire > 0 ) 
         then
@@ -362,41 +432,27 @@ end
 
         if ( castDarkDesire > 0 ) 
         then
-            npcBot:Action_UseAbilityOnLocation( abilityDark, castDarkLocation );
+            npcBot:Action_UseAbility( abilityDark, castDark );
             return;
         end
 
-        if ( castDanceDesire > 0 ) 
-        then
-            npcBot:Action_UseAbilityOnLocation( abilityDance, castDanceLocation );
-            return;
-        end
-
-        -- Pounce is castable but out of range, let's get closer
+        -- Pounce is ready! Let's go!
         if(abilityPounce:IsFullyCastable() and CanCastPounceOnTarget(StateMachine["EnemyToKill"])) then
-            npcBot:Action_MoveToLocation(StateMachine["EnemyToKill"]:GetLocation());
-                if (abilityDark:IsFullyCastable() and CanCastDarkOnTarget(StateMachine["EnemyToKill"])) then
-            npcBot:Action_MoveToLocation(StateMachine["EnemyToKill"]:GetLocation());
+            npcBot:Action_MoveTo(StateMachine["EnemyToKill"]:Get());
             return;
-            end
         end
 
         if(not abilityPounce:IsFullyCastable() and 
-        not abilityPounce:IsFullyCastable() or StateMachine["EnemyToKill"]:IsMagicImmune()) then
+        not abilityDark:IsFullyCastable() or StateMachine["EnemyToKill"]:IsMagicImmune()) then
             local extraHP = 0;
-            if(abilityPounce:IsFullyCastable()) then
-                local PouncenDamage = abilityPounce:GetSpecialValueInt( "pounce_damage" );
-                local PounceeDamageType = DAMAGE_TYPE_MAGICAL;
-                extraHP = StateMachine["EnemyToKill"]:GetActualDamage(PouncenDamage,PounceeDamageType);
+            if(abilityDark:IsFullyCastable()) then
+                local DarknDamage = abilityDark:GetSpecialValueInt( "total_damage" );
+                extraHP = StateMachine["EnemyToKill"]:GetActualDamage(DarknDamage);
             end
 
             if(StateMachine["EnemyToKill"]:GetHealth() - extraHP > npcBot:GetHealth()) then
-                if(abilityDance:IsFullyCastable() ) 
-                then npcBot:CanCastDance() 
-                else
-                    StateMachine.State = STATE_RUN_AWAY;
-                    return;
-                end
+                StateMachine.State = STATE_RUN_AWAY;
+                return;
             end
         end
 
@@ -405,41 +461,53 @@ end
             npcBot:Action_AttackUnit(StateMachine["EnemyToKill"],false);
         end
 
+    end
+end
+
 local function StateRunAway(StateMachine)
     local npcBot = GetBot();
 
     if(npcBot:IsAlive() == false) then
         StateMachine.State = STATE_IDLE;
-        StateMachine["RunAwayFromLocation"] = nil;
+        StateMachine["RunAwayFrom"] = nil;
         return;
     end
 
     if(ShouldRetreat()) then
         StateMachine.State = STATE_RETREAT;
-        StateMachine["RunAwayFromLocation"] = nil;
+        StateMachine["RunAwayFrom"] = nil;
         return;
     end
 
-    local mypos = npcBot:GetLocation();
+    local mypos = npcBot:Get();
 
-    if(StateMachine["RunAwayFromLocation"] == nil) then
-        --set the target to go back
-        StateMachine["RunAwayFromLocation"] = npcBot:GetLocation();
-        --npcBot:Action_MoveToLocation(Constant.HomePosition());
-        npcBot:Action_MoveToLocation(DotaBotUtility:GetNearByPrecursorPointOnLane(LANE));
+    if(StateMachine["RunAwayFrom"] == nil) then
+        -- Run fishy run!
+        StateMachine["RunAwayFrom"] = npcBot:Get();
+        --npcBot:Action_MoveTo(Constant.HomePosition());
+        npcBot:Action_MoveTo(DotaBotUtility:GetNearByPrecursorPointOnLane(LANE));
         return;
     else
-        if(GetUnitToLocationDistance(npcBot,StateMachine["RunAwayFromLocation"]) > 400) then
-            -- we are far enough from tower, return to normal state.
-            StateMachine["RunAwayFromLocation"] = nil;
+        if(GetUnitToDistance(npcBot,StateMachine["RunAwayFrom"]) > 400) then
+            -- We're safe, back we go to being a Slark.
+            StateMachine["RunAwayFrom"] = nil;
             StateMachine.State = STATE_IDLE;
             return;
         else
-            npcBot:Action_MoveToLocation(DotaBotUtility:GetNearByPrecursorPointOnLane(LANE));
+            npcBot:Action_MoveTo(DotaBotUtility:GetNearByPrecursorPointOnLane(LANE));
             return;
         end
     end
 end 
+
+-- useless now ignore it
+local function StateFarming(StateMachine)
+    local npcBot = GetBot();
+    if(npcBot:IsAlive() == false) then
+        StateMachine.State = STATE_IDLE;
+        return;
+    end
+end
 
 local StateMachine = {};
 StateMachine["State"] = STATE_IDLE;
@@ -449,7 +517,7 @@ StateMachine[STATE_RETREAT] = StateRetreat;
 StateMachine[STATE_GOTO_COMFORT_POINT] = StateGotoComfortPoint;
 StateMachine[STATE_FIGHTING] = StateFighting;
 StateMachine[STATE_RUN_AWAY] = StateRunAway;
-StateMachine["totalLevelOfAbilities"] = 18;
+StateMachine["totalLevelOfAbilities"] = 0;
 
 
 local SlarkAbilityPriority = {"slark_dark_pact",
@@ -463,45 +531,26 @@ local SlarkTalents = {
 };
 
 local function ThinkLvlupAbility(StateMachine)
-    -- Is there a bug? http://dev.dota2.com/showthread.php?t=274436
+    -- Bug? http://dev.dota2.com/showthread.php?t=274436
     local npcBot = GetBot();
-    npcBot:Action_LevelAbility("slark_shadow_dance");
-    npcBot:Action_LevelAbility("slark_dark_pact");
-    npcBot:Action_LevelAbility("slark_pounce");
-    npcBot:Action_LevelAbility("slark_essence_shift");
-    for _,AbilityName in pairs(SlarkAbilityPriority)
-    do
-        if TryToUpgradeAbility(AbilityName) then
-            break;
-        end
-    end
-    --[[
         npcBot:Action_LevelAbility("slark_shadow_dance");
-    npcBot:Action_LevelAbility("slark_dark_pact");
-    npcBot:Action_LevelAbility("slark_pounce");
-    npcBot:Action_LevelAbility("slark_essence_shift");
-    ]]
+        npcBot:Action_LevelAbility("slark_dark_pact");
+        npcBot:Action_LevelAbility("slark_pounce");
+        npcBot:Action_LevelAbility("slark_essence_shift");
+        npcBot:Action_LevelAbility("special_bonus_lifesteal_10");
+        npcBot:Action_LevelAbility("special_bonus_agility_15");
+        npcBot:Action_LevelAbility("special_bonus_attack_speed_25");
+        npcBot:Action_LevelAbility("special_bonus_all_stats_12");
 
-    --[[
-        for _,AbilityName in pairs(SlarkaAbilityPriority)
-    do
-        -- USELESS BREAK : because valve does not check ability points
-        if TryToUpgradeAbility(AbilityName) then
-            break;
-        end
-    end
-    ]]   
-
-    --npcBot:Action_LevelAbility("special_bonus_mp_250");
 
     local HeroLevel = PerryGetHeroLevel();
 
-    if(SlarkaTalents[HeroLevel] ~= nil and StateMachine["totalLevelOfAbilities"] < HeroLevel) then
+    if(SlarkTalents[HeroLevel] ~= nil and StateMachine["totalLevelOfAbilities"] < HeroLevel) then
         npcBot:Action_LevelAbility(SlarkTalents[HeroLevel]);
         StateMachine["totalLevelOfAbilities"] = StateMachine["totalLevelOfAbilities"] + 1;
     else
         for k, ability_name in pairs(SlarkAbilityPriority) do
-            local ability = npcBot:GetAbilityByName("slark_dark_pact");
+            local ability = npcBot:GetAbilityByName(ability_name);
             if (ability:CanAbilityBeUpgraded() and ability:GetLevel()<ability:GetMaxLevel() and StateMachine["totalLevelOfAbilities"] < HeroLevel) then
                 ability:UpgradeAbility();
                 StateMachine["totalLevelOfAbilities"] = StateMachine["totalLevelOfAbilities"] + 1;
