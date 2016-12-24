@@ -75,13 +75,13 @@ local function ConsiderFighting(StateMachine)
 end
 
 
-local function ConsiderAttackCreeps()
-    -- there are creeps try to attack them --
+local function ConsiderAttackCreeps(StateMachine)
+    -- CREEPS?! HIT THEM BOY!
     --print("ConsiderAttackCreeps");
     local npcBot = GetBot();
 
     local EnemyCreeps = npcBot:GetNearbyCreeps(1000,true);
-    local AllyCreeps = npcBot:GetNearbyCreeps(1000,false);
+    local AllyCreeps = npcBot:GetNearbyCreeps(1000,false);  
 
     -- Check if we're already using an ability
 	if ( npcBot:IsUsingAbility() ) then return end;
@@ -116,7 +116,7 @@ local function ConsiderAttackCreeps()
 
     --print("desires: " .. castDanceDesire .. " " .. castPounceDesire .. " " .. castDarkDesire);
 
-    --If we dont cast ability, just try to last hit.
+    --If we dont cast ability, just try to last hit...
 
     local lowest_hp = 100000;
     local weakest_creep = nil;
@@ -124,6 +124,7 @@ local function ConsiderAttackCreeps()
     do 
         --npcBot:GetBaseDamage
         local creep_name = creep:GetUnitName();
+        DotaBotUtility:UpdateCreepHealth(creep);
         --print(creep_name);
         if(creep:IsAlive()) then
              local creep_hp = creep:GetHealth();
@@ -134,12 +135,31 @@ local function ConsiderAttackCreeps()
          end
     end
 
-    if(weakest_creep ~= nil) then
-        -- Last hitting and denying? PogChamp.
-        if(DotaBotUtility.NilOrDead(npcBot:GetAttackTarget()) and 
-        lowest_hp < npcBot:GetBaseDamage( true, weakest_creep, 1.0, DAMAGE_TYPE_PHYSICAL ) + 30) then
-            npcBot:Action_AttackUnit(weakest_creep,true);
-            return;
+    if(weakest_creep ~= nil and weakest_creep:GetHealth() / weakest_creep:GetMaxHealth() < 0.5) then
+        -- Let's try to last hit. Let's dream.
+        --if(DotaBotUtility.NilOrDead(npcBot:GetAttackTarget()) and 
+        if(lowest_hp < weakest_creep:GetActualDamage(
+        npcBot:GetBaseDamage(),DAMAGE_TYPE_PHYSICAL)
+        + DotaBotUtility:GetCreepHealthDeltaPerSec(weakest_creep) 
+        * (npcBot:GetAttackPoint() / npcBot:GetAttackSpeed() 
+        + GetUnitToUnitDistance(npcBot,weakest_creep) / 1000)) then
+            if(npcBot:GetAttackTarget() == nil) then --StateMachine["attcking creep"]
+                npcBot:Action_AttackUnit(weakest_creep,false);
+                return;
+            elseif(weakest_creep ~= StateMachine["attcking creep"]) then
+                StateMachine["   creep"] = weakest_creep;
+                npcBot:Action_AttackUnit(weakest_creep,true);
+                return;
+            end
+        else
+            -- Act human, Slark. Don't be a robot, you cuck. The attack, wait and go again motion.
+            if(npcBot:GetCurrentActionType() == BOT_ACTION_TYPE_ATTACK) then
+                npcBot:Action_ClearActions(true);
+                return;
+            else
+                npcBot:Action_AttackUnit(weakest_creep,false);
+                return;
+            end
         end
         weakest_creep = nil;
         
@@ -147,8 +167,9 @@ local function ConsiderAttackCreeps()
 
     for creep_k,creep in pairs(AllyCreeps)
     do 
-        --npcBot:GetBaseDamage
+        --npcBot:GetEstimatedDamageToTarget
         local creep_name = creep:GetUnitName();
+        DotaBotUtility:UpdateCreepHealth(creep);
         --print(creep_name);
         if(creep:IsAlive()) then
              local creep_hp = creep:GetHealth();
@@ -160,9 +181,13 @@ local function ConsiderAttackCreeps()
     end
 
     if(weakest_creep ~= nil) then
-        -- Last hitting and denying? PogChamp.
+        -- Let's try to last hit. Let's dream.
         if(DotaBotUtility.NilOrDead(npcBot:GetAttackTarget()) and 
-        lowest_hp < npcBot:GetBaseDamage( true, weakest_creep, 1.0, DAMAGE_TYPE_PHYSICAL ) + 30 and 
+        lowest_hp < weakest_creep:GetActualDamage(
+        npcBot:GetBaseDamage(),DAMAGE_TYPE_PHYSICAL) + DotaBotUtility:GetCreepHealthDeltaPerSec(weakest_creep) 
+        * (npcBot:GetAttackPoint() / npcBot:GetAttackSpeed()
+        + GetUnitToUnitDistance(npcBot,weakest_creep) / 1000)
+         and 
         weakest_creep:GetHealth() / weakest_creep:GetMaxHealth() < 0.5) then
             Attacking_creep = weakest_creep;
             npcBot:Action_AttackUnit(Attacking_creep,true);
@@ -172,7 +197,7 @@ local function ConsiderAttackCreeps()
         
     end
 
-    -- Bored, hit heroes. Get them essenece shift procs my little fishy
+    -- Bored, hit heroes. Get them essenece shift procs my little fishy.
 
     local NearbyEnemyHeroes = npcBot:GetNearbyHeroes( 700, true, BOT_MODE_ATTACK );
     if(NearbyEnemyHeroes ~= nil) then
@@ -210,7 +235,7 @@ local function IsTowerAttackingMe()
     end
 end
 
--------------------local states-----------------------------------------------------
+-------------------Local States-------------------
 
 local function StateIdle(StateMachine)
     local npcBot = GetBot();
@@ -251,9 +276,21 @@ local function StateIdle(StateMachine)
         return;
     end
 
-    --target = GetAlongLane(LANE,0.95);
-    target = DotaBotUtility:GetNearBySuccessorPointOnLane(LANE);
-    npcBot:Action_AttackMove(target);
+   -- Get a TP and be FREE! FREE MY SLARK, FREE!
+    if(npcBot:DistanceFromFountain() < 100 and DotaTime() > 0) then
+        local tpscroll = DotaBotUtility.IsItemAvailable("item_tpscroll");
+        if(tpscroll == nil and DotaBotUtility:HasEmptySlot() and npcBot:GetGold() >= GetItemCost("item_tpscroll")) then
+            print("buying tp");
+            npcBot:Action_PurchaseItem("item_tpscroll");
+            return;
+        elseif(tpscroll ~= nil and tpscroll:IsFullyCastable()) then
+            local tower = DotaBotUtility:GetFrontTowerAt(LANE);
+            if(tower ~= nil) then
+                npcBot:Action_UseAbilityOnEntity(tpscroll,tower);
+                return;
+            end
+        end
+    end
     
 
 end
@@ -391,7 +428,7 @@ local function StateFighting(StateMachine)
 
         if(StateMachine["dark pact time"] ~= nil) then
             -- Consider Pounce after DarkPact
-            -- Cast Pounce 0.1s before DarkPact enDark
+            -- Cast Pounce 0.1s after DarkPact
             if(abilityPounce:IsFullyCastable() and GameTime() - StateMachine["dark pact time"] > Slark_DarkPact_Pounce_Combo_Delay) then
                 if(DotaBotUtility.AbilityOutOfRange4Unit(abilityPounce,StateMachine["EnemyToKill"])) then
                     -- Let's get closer to Pounce. OOSH
@@ -500,7 +537,7 @@ local function StateRunAway(StateMachine)
     end
 end 
 
--- useless now ignore it
+-- Useless, ignore! 
 local function StateFarming(StateMachine)
     local npcBot = GetBot();
     if(npcBot:IsAlive() == false) then
