@@ -5,19 +5,7 @@ This is Slark bot, he likes to be Slark.
 Just creating a slark to do things and be cool.
 
 ## Current issues
-- Slark is not levelling his abilities yet.
-- This error:
-
-Script Runtime Error: ...\dota\scripts\vscripts\bots/ability_item_usage_slark.lua:200: attempt to index global 'npcBot' (a nil value)
-stack traceback:
-	...\dota\scripts\vscripts\bots/ability_item_usage_slark.lua:200: in main chunk
-	[C]: in function 'require'
-	...ota 2 beta\game\dota\scripts\vscripts\bots\bot_slark.lua:9: in main chunk
-Failed to run script 'C:\Program Files (x86)\Steam\steamapps\common\dota 2 beta\game\dota\scripts\vscripts\bots\bot_slark.lua'!
-Script Runtime Error: ...\dota\scripts\vscripts\bots\ability_item_usage_slark.lua:200: attempt to index global 'npcBot' (a nil value)
-stack traceback:
-	...\dota\scripts\vscripts\bots\ability_item_usage_slark.lua:200: in main chunk
-Failed to run script 'C:\Program Files (x86)\Steam\steamapps\common\dota 2 beta\game\dota\scr
+- Slark is stuck in idle mode.
 
 ## Work in progress
 
