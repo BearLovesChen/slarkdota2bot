@@ -94,7 +94,7 @@ function M:GetComfortPoint(creeps,LANE)
     local x_pos_sum = 0;
     local y_pos_sum = 0;
     local count = 0;
-    local meele_coefficient = 5;-- Consider meele creeps first
+    local meele_coefficient = 5;-- Consider melee creeps first
     local coefficient = 1;
     for creep_k,creep in pairs(creeps)
     do

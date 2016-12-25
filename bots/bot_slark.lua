@@ -3,13 +3,13 @@
     the key "STATE" stores the STATE of Slark 
     other key value pairs: key is the string of state value is the function of the State. 
 
-    each frame DOTA2 will call Think()
+    Each frame DOTA2 will call Think()
     Then Think() will call the function of current state.
 ]]
 
-local ValveAbilityUse = require(GetScriptDirectory().."/ability_item_usage_slark");
-local Constant = require(GetScriptDirectory().."/constant_each_side");
-local DotaBotUtility = require(GetScriptDirectory().."/utility");
+local ValveAbilityUse = require(GetScriptDirectory().."\\ability_item_usage_slark");
+local Constant = require(GetScriptDirectory().."\\constant_each_side");
+local DotaBotUtility = require(GetScriptDirectory().."\\utility");
 
 local STATE_IDLE = "STATE_IDLE";
 local STATE_ATTACKING_CREEP = "STATE_ATTACKING_CREEP";
@@ -20,15 +20,15 @@ local STATE_GOTO_COMFORT_POINT = "STATE_GOTO_COMFORT_POINT";
 local STATE_FIGHTING = "STATE_FIGHTING";
 local STATE_RUN_AWAY = "STATE_RUN_AWAY";
 
-local SlarkRetreatHPThreshold = 0.3;
-local SlarkRetreatMPThreshold = 0.2;
+local SlarkRetreatHPThreshold = 0.15;
+local SlarkRetreatMPThreshold = 0.05;
 
 local STATE = STATE_IDLE;
 
 LANE = LANE_BOT
 
------------------ local utility functions reordered for lua local visibility--------
---Perry's code from http://dev.dota2.com/showthread.php?t=274837
+-- Utility functions
+-- Perry's code from http://dev.dota2.com/showthread.php?t=274837
 local function PerryGetHeroLevel()
     local npcBot = GetBot();
     local respawnTable = {8, 10, 12, 14, 16, 26, 28, 30, 32, 34, 36, 46, 48, 50, 52, 54, 56, 66, 70, 74, 78,  82, 86, 90, 100};
@@ -124,7 +124,6 @@ local function ConsiderAttackCreeps(StateMachine)
     do 
         --npcBot:GetBaseDamage
         local creep_name = creep:GetUnitName();
-        DotaBotUtility:UpdateCreepHealth(creep);
         --print(creep_name);
         if(creep:IsAlive()) then
              local creep_hp = creep:GetHealth();
@@ -421,7 +420,7 @@ local function StateFighting(StateMachine)
         end
 
         local abilityPounce = npcBot:GetAbilityByName( "slark_pounce" );
-        local abilityDark = npcBot:GetAbilityByName( "Slark_dark_pact" );
+        local abilityDark = npcBot:GetAbilityByName( "slark_dark_pact" );
         local abilityDance = npcBot:GetAbilityByName( "slark_shadow_dance" );
 
         local Slark_DarkPact_Pounce_Combo_Delay = 1.4;
@@ -537,15 +536,6 @@ local function StateRunAway(StateMachine)
     end
 end 
 
--- Useless, ignore! 
-local function StateFarming(StateMachine)
-    local npcBot = GetBot();
-    if(npcBot:IsAlive() == false) then
-        StateMachine.State = STATE_IDLE;
-        return;
-    end
-end
-
 local StateMachine = {};
 StateMachine["State"] = STATE_IDLE;
 StateMachine[STATE_IDLE] = StateIdle;
@@ -556,44 +546,43 @@ StateMachine[STATE_FIGHTING] = StateFighting;
 StateMachine[STATE_RUN_AWAY] = StateRunAway;
 StateMachine["totalLevelOfAbilities"] = 0;
 
-
-local SlarkAbilityPriority = {"slark_dark_pact",
-"slark_shadow_Dance","slark_pounce","slark_essence_shift"};
-
-local SlarkTalents = {
+local SlarkAbilityMap = {
+    [1] = "slark_dark_pact",
+    [2] = "slark_pounce",
+    [3] = "slark_dark_pact",
+    [4] = "slark_essence_shift",
+    [5] = "slark_dark_pact",
+    [6] = "slark_shadow_dance",
+    [7] = "slark_dark_pact",
+    [8] = "slark_pounce",
+    [9] = "slark_pounce",
     [10] = "special_bonus_lifesteal_10",
+    [11] = "slark_pouncet",
+    [12] = "slark_shadow_dance",
+    [13] = "slark_essence_shift",
+    [14] = "slark_essence_shift",
     [15] = "special_bonus_agility_15",
-    [20] = "special_bonus_attack_speed_25",
-    [25] = "special_bonus_all_stats_12"
+    [16] = "slark_essence_shift",
+    [18] = "slark_shadow_dance",
+    [20] = "special_bonus_attack_speed_25", 
+    [25] = "special_bonus_all_stats_12",
 };
+
+local SlarkDoneLvlupAbility = {};
+
+for lvl,_ in pairs(SlarkAbilityMap)
+do
+    SlarkDoneLvlupAbility[lvl] = false;
+end
 
 local function ThinkLvlupAbility(StateMachine)
     -- Bug? http://dev.dota2.com/showthread.php?t=274436
-    local npcBot = GetBot();
-        npcBot:Action_LevelAbility("slark_shadow_dance");
-        npcBot:Action_LevelAbility("slark_dark_pact");
-        npcBot:Action_LevelAbility("slark_pounce");
-        npcBot:Action_LevelAbility("slark_essence_shift");
-        npcBot:Action_LevelAbility("special_bonus_lifesteal_10");
-        npcBot:Action_LevelAbility("special_bonus_agility_15");
-        npcBot:Action_LevelAbility("special_bonus_attack_speed_25");
-        npcBot:Action_LevelAbility("special_bonus_all_stats_12");
-
+local npcBot = GetBot();
 
     local HeroLevel = PerryGetHeroLevel();
-
-    if(SlarkTalents[HeroLevel] ~= nil and StateMachine["totalLevelOfAbilities"] < HeroLevel) then
-        npcBot:Action_LevelAbility(SlarkTalents[HeroLevel]);
-        StateMachine["totalLevelOfAbilities"] = StateMachine["totalLevelOfAbilities"] + 1;
-    else
-        for k, ability_name in pairs(SlarkAbilityPriority) do
-            local ability = npcBot:GetAbilityByName(ability_name);
-            if (ability:CanAbilityBeUpgraded() and ability:GetLevel()<ability:GetMaxLevel() and StateMachine["totalLevelOfAbilities"] < HeroLevel) then
-                ability:UpgradeAbility();
-                StateMachine["totalLevelOfAbilities"] = StateMachine["totalLevelOfAbilities"] + 1;
-                break;
-            end
-        end
+    if(SlarkDoneLvlupAbility[HeroLevel] == false) then
+        npcBot:Action_LevelAbility(SlarkAbilityMap[HeroLevel]);
+        --SlarkDoneLvlupAbility[HeroLevel] = true;
     end
 end
 
@@ -601,7 +590,7 @@ local PrevState = "none";
 
 function Think(  )
     -- Think this item( ... )
-    --update
+    -- update
     
     local npcBot = GetBot();
     DotaBotUtility:CourierThink();

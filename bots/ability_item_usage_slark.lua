@@ -1,13 +1,45 @@
 
-----------------------------------------------------------------------------------------------------
-
-castPounceDesire = 0;
-castDarkDesire = 0;
-castDanceDesire = 0;
-
 function AbilityUsageThink()
 
-	local npcBot = GetBot();
+local npcBot = GetBot();
+
+	local LocationMetaTable = getmetatable(npcBot:GetLocation());
+
+    --[[
+    for k,v in pairs(LocationMetaTable)
+	do
+	    print(k);
+	end
+	print("---------------------");
+    
+	--[[
+	Length2D
+	unm
+	Dot
+	Normalized
+	Length
+	Cross
+	mul
+	newindex
+	len
+	add
+	eq
+	sub
+	div
+	tostring
+	index
+	]]
+
+	--print(npcBot:GetLocation()[1].." " .. npcBot:GetLocation()[2])
+
+	local LocationAlongLaneMetatable = getmetatable(GetLocationAlongLane(3,2));
+
+    for k,v in pairs(LocationAlongLaneMetatable)
+	do
+	    print(k);
+	end
+	print(GetLocationAlongLane(2,10));
+	print("---------------------");
 
 	-- Check if we're already using an ability
 	if ( npcBot:IsUsingAbility() ) then return end;
@@ -21,23 +53,30 @@ function AbilityUsageThink()
 	castDarkDesire, castDarkLocation = ConsiderDarkPact();
 	castDanceDesire, castDanceLocation = ConsiderShadowDance();
 
-	if ( castPounceDesire > 0 ) 
+	if ( castPounceDesire > BOT_ACTION_DESIRE_NONE  ) 
 	then
 		npcBot:Action_UseAbilityOnEntity( abilityPounce, castPounceTarget );
 		return;
 	end
 
-	if ( castDarkDesire > 0 ) 
+	if ( castDarkDesire > BOT_ACTION_DESIRE_NONE  ) 
 	then
 		npcBot:Action_UseAbility( abilityDark, castDark );
 		return;
 	end
 
-	if ( castDanceDesire > 0.5 ) 
+	if ( castDanceDesire > BOT_ACTION_DESIRE_LOW ) 
 	then
 		npcBot:Action_UseAbility( abilityDance, castDance );
 		return;
 	end
+
+	middle_point = npcBot:GetLocation();
+	middle_point[1] = 0.0;
+	middle_point[2] = 0.0;
+
+
+	npcBot:Action_AttackMove(middle_point);
 
 end
 
@@ -145,12 +184,13 @@ function ConsiderPounce()
 end
 
 	-- If needing to escape
-	if ( npcBot:GetActiveMode() == BOT_MODE_RETREAT and npcBot:GetActiveModeDesire() == BOT_MODE_DESIRE_MEDIUM )
+	local npcBot = GetBot();
+	if ( ( ( npcBot:GetActiveMode() ) == BOT_MODE_RETREAT) and (npcBot:GetActiveModeDesire() == BOT_MODE_DESIRE_MEDIUM ) )
 	then 
 		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( 1800, true, BOT_MODE_NONE );
 		for _,npcEnemy in pairs( tableNearbyEnemyHeroes )
 		do
-			if ( npcBot:WasRecentlyDamagedByHero( npcEnemy, 2.0 ) ) 
+			if ( npcBot:WasRecentlyDamagedByHero( npcEnemy, 1.0 ) ) 	
 			then
 				if ( CanCastPounce() )
 				then
@@ -196,12 +236,13 @@ function ConsiderShadowDance()
 	end
 
 	-- If needing to escape
-	if ( npcBot:GetActiveMode() == BOT_MODE_RETREAT and npcBot:GetActiveModeDesire() == BOT_MODE_DESIRE_HIGH )
+	local npcBot = GetBot();
+	if ( ( ( npcBot:GetActiveMode() ) == BOT_MODE_RETREAT) and (npcBot:GetActiveModeDesire() == BOT_MODE_DESIRE_MEDIUM ) )
 	then 
 		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( 1800, true, BOT_MODE_NONE );
 		for _,npcEnemy in pairs( tableNearbyEnemyHeroes )
 		do
-			if ( npcBot:GetHealth() < 250 ) 
+			if ( npcBot:GetHealth() < 0.2 ) 
 			then
 				if CanCastShadowDance()
 				then
